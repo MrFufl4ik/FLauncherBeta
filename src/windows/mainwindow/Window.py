@@ -26,6 +26,9 @@ class Ui_MainWindow(object):
         MainWindow.resize(900, 400)
         MainWindow.setMinimumSize(QSize(900, 400))
         MainWindow.setMaximumSize(QSize(900, 400))
+        icon = QIcon()
+        icon.addFile(u"../assets/frog.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        MainWindow.setWindowIcon(icon)
         MainWindow.setStyleSheet(u"")
         MainWindow.setDocumentMode(False)
         MainWindow.setDockOptions(QMainWindow.DockOption.AllowTabbedDocks|QMainWindow.DockOption.AnimatedDocks)
@@ -37,7 +40,7 @@ class Ui_MainWindow(object):
 "}")
         self.btnRunMinecraft = QPushButton(self.centralwidget)
         self.btnRunMinecraft.setObjectName(u"btnRunMinecraft")
-        self.btnRunMinecraft.setGeometry(QRect(470, 350, 411, 41))
+        self.btnRunMinecraft.setGeometry(QRect(610, 350, 271, 41))
         font = QFont()
         font.setFamilies([u"JetBrains Mono Medium"])
         font.setPointSize(14)
@@ -184,15 +187,42 @@ class Ui_MainWindow(object):
 "    border: 1px solid #444;\n"
 "}")
         self.inputPassword.setEchoMode(QLineEdit.EchoMode.Password)
+        self.btnClientFolder = QPushButton(self.centralwidget)
+        self.btnClientFolder.setObjectName(u"btnClientFolder")
+        self.btnClientFolder.setGeometry(QRect(470, 350, 131, 41))
+        self.btnClientFolder.setFont(font)
+        self.btnClientFolder.setStyleSheet(u"QPushButton {\n"
+"    background-color: black;\n"
+"    color: white;\n"
+"    border: 1px solid #333;\n"
+"    border-radius: 6px;\n"
+"    padding: 8px 16px;\n"
+"    min-width: 80px;\n"
+"}\n"
+"\n"
+"QPushButton:hover {\n"
+"    background-color: #222;\n"
+"    border: 1px solid #444;\n"
+"}\n"
+"\n"
+"QPushButton:pressed {\n"
+"    background-color: #111;\n"
+"}\n"
+"\n"
+"QPushButton:disabled {\n"
+"    background-color: #333;\n"
+"    color: #999;\n"
+"}")
         MainWindow.setCentralWidget(self.centralwidget)
         self.picMain.raise_()
         self.labelChangelog.raise_()
         self.picFrog.raise_()
-        self.btnRunMinecraft.raise_()
+        self.inputPassword.raise_()
         self.btnRules.raise_()
+        self.btnRunMinecraft.raise_()
         self.btnDiscord.raise_()
         self.inputPlayerName.raise_()
-        self.inputPassword.raise_()
+        self.btnClientFolder.raise_()
 
         self.retranslateUi(MainWindow)
 
@@ -209,5 +239,6 @@ class Ui_MainWindow(object):
         self.picFrog.setText("")
         self.inputPlayerName.setPlaceholderText(QCoreApplication.translate("MainWindow", u"\u043d\u0438\u043a \u0438\u0433\u0440\u043e\u043a\u0430", None))
         self.inputPassword.setPlaceholderText(QCoreApplication.translate("MainWindow", u"\u043f\u0430\u0440\u043e\u043b\u044c", None))
+        self.btnClientFolder.setText(QCoreApplication.translate("MainWindow", u"\u043f\u0430\u043f\u043a\u0430", None))
     # retranslateUi
 

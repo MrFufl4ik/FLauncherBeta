@@ -1,6 +1,4 @@
 import os
-import webbrowser
-
 
 def is_windows():
     if os.name == "nt": return True
@@ -9,5 +7,3 @@ def is_windows():
 def is_linux():
     if os.name == "posix": return True
     return False
-
-def open_web_site(url: str): webbrowser.open(url)
