@@ -58,6 +58,7 @@ class ServerManager:
     def on_ftp_init_finished_handle(self):
         self._main_window.show()
         self._server_loading_window.close()
+        WindowManager().distruct_server_loading_window()
 
     def on_ftp_error_handle(self, result: int):
         self._logger.send_info_log("An error has been detected, starting print")

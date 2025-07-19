@@ -7,7 +7,9 @@ from PySide6.QtWidgets import QMainWindow, QMessageBox
 
 from src.logs.LogManager import LogManager
 from src.operatingsystem import ConfigManager
-from src.serverside.FTPManager import FTPManager, FTPDownloadThread, FTPListOperationObject, FTPOperationThread
+from src.serverside.FTPManager import FTPManager, FTPListOperationObject, FTPOperationThread
+from src.windows.WindowManager import WindowManager
+from src.windows.downloadwindow.FLauncherBetaDownloadWindow import FLauncherBetaDownloadWindow
 from src.windows.mainwindow.Window import Ui_MainWindow
 from src.operatingsystem.JsonManager import writeJson, readJson
 
@@ -16,8 +18,6 @@ class FLauncherBetaMainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.server_loading_window = None
-        self.download_window = None
         self._thread = None
         self.ftp_manager = FTPManager()
 
@@ -71,16 +71,17 @@ class FLauncherBetaMainWindow(QMainWindow):
             webbrowser.open(links_data["discord"])
 
     def _on_run_button_clicked(self):
-        def on_list_finished(files: list):
-            print(files)
-        self._operation_object = FTPListOperationObject("/")
-        self._operation_object.finished.connect(on_list_finished)
-        self._thread = FTPOperationThread(self._operation_object)
-        self._thread.start()
+        self.ui.btnRunMinecraft.setEnabled(False)
+        def on_download_finished():
+            self.ui.btnRunMinecraft.setEnabled(True)
 
-        QMessageBox.information(
-            self,
-            "Информация",
-            "Это пока в devolpment, lol",
-            QMessageBox.StandardButton.Ok
-        )
+        window: FLauncherBetaDownloadWindow = WindowManager().create_download_window()
+        window.show()
+        operation_object = window.downloadFileSetup("/modpacks/vacuumrevival/1.7z", "file.7z")
+        operation_object.finished.connect(on_download_finished)
+        window.downloadFileStart(operation_object)
+
+        # self._operation_object = FTPListOperationObject("/")
+        # self._operation_object.finished.connect(on_list_finished)
+        # self._thread = FTPOperationThread(self._operation_object)
+        # self._thread.start()

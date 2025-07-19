@@ -207,6 +207,7 @@ class FTPListOperationObject(FTPOperationObject):
 
 class FTPDownloadOperationStatus:
     EMPTY_FILE_ERROR = 8
+    UNKNOWN_FILE_ERROR = 9
 
 class FTPDownloadOperationObject(FTPOperationObject):
     progress = Signal(int, int)
@@ -250,6 +251,5 @@ class FTPDownloadOperationObject(FTPOperationObject):
             self.finished.emit()
 
         except Exception as e:
-            error_msg = f"Failed to download {self.remote_path}: {str(e)}"
-            self._logger.send_error_log(error_msg)
-            self.error.emit(error_msg)
+            self._logger.send_error_log(f"Failed to download {self.remote_path}: {str(e)}")
+            self.error.emit(FTPDownloadOperationStatus.UNKNOWN_FILE_ERROR)

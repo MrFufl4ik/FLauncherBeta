@@ -6,6 +6,7 @@ class WindowManager:
         self._initialized = True
         self.main_window = None
         self.server_loading_window = None
+        self.download_window = None
 
     def __new__(cls):
         if cls._instance is None:
@@ -29,5 +30,19 @@ class WindowManager:
         return self.get_server_loading_window()
     def has_server_loading_window(self) -> bool:
         return self.get_server_loading_window() is not None
+    def distruct_server_loading_window(self):
+        self.server_loading_window = None
     def get_server_loading_window(self) -> 'FLauncherBetaServerLoadingWindow':
         return self.server_loading_window
+
+    def create_download_window(self) -> 'FLauncherBetaDownloadWindow':
+        if self.has_download_window(): return self.get_download_window()
+        from src.windows.downloadwindow.FLauncherBetaDownloadWindow import FLauncherBetaDownloadWindow
+        self.download_window = FLauncherBetaDownloadWindow()
+        return self.get_download_window()
+    def distruct_download_window(self):
+        self.download_window = None
+    def has_download_window(self) -> bool:
+        return self.get_download_window() is not None
+    def get_download_window(self) -> 'FLauncherBetaDownloadWindow':
+        return self.download_window
