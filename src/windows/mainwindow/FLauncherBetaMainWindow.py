@@ -72,8 +72,25 @@ class FLauncherBetaMainWindow(QMainWindow):
 
     def _on_run_button_clicked(self):
         self.ui.btnRunMinecraft.setEnabled(False)
+
+        remote_update_path = "/modpacks/vacuumrevival"
+
+        temp_path = f"{os.getcwd()}/temp"
+        if not os.path.exists(temp_path): os.makedirs(temp_path)
+
+        remote_updates_files = []
+        operation_object = FTPListOperationObject(remote_update_path)
+        def on_list_operation_finished(remote_files_list: list):
+            for file in remote_files_list: print(file)
+        operation_object.finished.connect(on_list_operation_finished)
+        self._ftp_list_operation_thread = FTPOperationThread(operation_object)
+        self._ftp_list_operation_thread.start()
+
+        os.removedirs(temp_path)
+
         def on_download_finished():
             self.ui.btnRunMinecraft.setEnabled(True)
+
 
         window: FLauncherBetaDownloadWindow = WindowManager().create_download_window()
         window.show()
