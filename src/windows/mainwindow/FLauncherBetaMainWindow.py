@@ -4,11 +4,10 @@ import webbrowser
 from PySide6.QtCore import QRegularExpression, Qt
 from PySide6.QtGui import QPixmap, QRegularExpressionValidator
 from PySide6.QtWidgets import QMainWindow, QMessageBox
-from qasync import asyncSlot
 
 from src.logs.LogManager import LogManager
 from src.operatingsystem import ConfigManager
-from src.serverside.FTPManager import FTPManager, FTPDownloadThread
+from src.serverside.FTPManager import FTPManager, FTPDownloadThread, FTPListOperationObject, FTPOperationThread
 from src.windows.mainwindow.Window import Ui_MainWindow
 from src.operatingsystem.JsonManager import writeJson, readJson
 
@@ -19,6 +18,7 @@ class FLauncherBetaMainWindow(QMainWindow):
         super().__init__()
         self.server_loading_window = None
         self.download_window = None
+        self._thread = None
         self.ftp_manager = FTPManager()
 
         # UI setup
@@ -29,6 +29,7 @@ class FLauncherBetaMainWindow(QMainWindow):
 
     def _qt_setup_ui(self):
         self.ui.picMain.setPixmap(QPixmap(f"{os.getcwd()}/assets/background.png"))
+        self.ui.picServerTitle.setPixmap(QPixmap(f"{os.getcwd()}/assets/server_title.png"))
         self.ui.inputPlayerName.setValidator(
             QRegularExpressionValidator(QRegularExpression("[A-Za-z0-9-_]+")))
         self._load_player_data()
@@ -69,10 +70,14 @@ class FLauncherBetaMainWindow(QMainWindow):
             self._logger.send_info_log(f"Open browser with url from {ConfigManager.getLinksDataJsonFile()}")
             webbrowser.open(links_data["discord"])
 
-    @asyncSlot()
-    async def _on_run_button_clicked(self):
-        print(FTPManager().list_files("/"))
-        print(FTPManager().is_directory("/modpacks"))
+    def _on_run_button_clicked(self):
+        def on_list_finished(files: list):
+            print(files)
+        self._operation_object = FTPListOperationObject("/")
+        self._operation_object.finished.connect(on_list_finished)
+        self._thread = FTPOperationThread(self._operation_object)
+        self._thread.start()
+
         QMessageBox.information(
             self,
             "Информация",

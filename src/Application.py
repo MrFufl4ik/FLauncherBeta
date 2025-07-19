@@ -2,7 +2,6 @@ import asyncio
 import sys
 
 from PySide6.QtWidgets import QApplication
-from qasync import QEventLoop
 
 from src.logs.LogManager import LogManager
 from src.serverside.ServerManager import ServerManager

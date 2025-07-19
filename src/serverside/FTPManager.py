@@ -1,10 +1,8 @@
 import os
-from ftplib import FTP, error_perm, error_temp
 import socket
-from sqlite3 import connect
-from typing import TypedDict, Optional, List
+from ftplib import FTP, error_perm, error_temp
 
-import aioftp
+from typing import TypedDict, Optional, List
 from PySide6.QtCore import QThread, Signal, QObject
 
 from src.logs.LogManager import LogManager
@@ -21,7 +19,6 @@ class FTPStatus:
     NETWORK_ERROR = 5
     UNKNOWN_ERROR = 6
     SETUP_ERROR = 7
-
 
 # Error messages mapping
 ERROR_MESSAGES = {
@@ -153,33 +150,7 @@ class FTPManager:
 
     def list_files(self, remote_path: str) -> Optional[List[str]]:
         self._logger.send_info_log(f"Attempting to list files in: {remote_path}")
-        try:
-            with FTP() as ftp:
-                ftp.connect(
-                    host=self.ftp_config["ip"],
-                    port=self.ftp_config["port"],
-                    timeout=10
-                )
-                ftp.login(
-                    user=self.ftp_config["username"],
-                    passwd=self.ftp_config["password"]
-                )
-                files = ftp.nlst(remote_path)
-                self._logger.send_success_log(f"Found {len(files)} files in {remote_path}")
-                return files
 
-        except Exception as e:
-            self._logger.send_error_log(f"Failed to list files in {remote_path}: {str(e)}")
-            return None
-
-    def is_directory(self, path):
-        try:
-            ftp = self.connect_to_ftp()
-            response = ftp.sendcmd(f'MLST {path}')
-            return 'type=dir' in response or 'type=cdir' in response or 'type=pdir' in response
-        except Exception as e:
-            self._logger.send_error_log(f"Failed to check remote path of directory: {e}")
-            return False
 
 class FTPOperationObject(QObject):
     def run(self): pass
@@ -196,7 +167,8 @@ class FTPOperationThread(QThread):
         self.worker.run()
 
 class FTPIsDirectoryOperationObject(FTPOperationObject):
-    finished = Signal()
+    finished = Signal(bool)
+    error = Signal(int)
     _logger = LogManager()
 
     def __init__(self, remote_path: str):
@@ -205,81 +177,79 @@ class FTPIsDirectoryOperationObject(FTPOperationObject):
         self._logger.send_info_log(f"Initialized FTP is directory operation object for {remote_path}")
 
     def run(self):
-        ftp = FTPManager().connect_to_ftp()
+        status, ftp = FTPManager().connect_to_ftp()
+        if ftp is None: self.error.emit(status); return
+        try:
+            response = ftp.sendcmd(f'MLST {self.remote_path}')
+            self.finished.emit('type=dir' in response or 'type=cdir' in response or 'type=pdir' in response)
+        except Exception as e:
+            self._logger.send_error_log(f"Failed to check remote path of directory: {e}")
+            self.finished.emit(False)
 
+class FTPListOperationObject(FTPOperationObject):
+    finished = Signal(list)
+    error = Signal(int)
+    _logger = LogManager()
 
+    def __init__(self, remote_path: str):
+        super().__init__()
+        self.remote_path = remote_path
+        self._logger.send_info_log(f"Initialized FTP list operation object for {remote_path}")
 
-class FTPDownloadObject(QObject):
+    def run(self):
+        status, ftp = FTPManager().connect_to_ftp()
+        if ftp is None: self.error.emit(status); return
+        try:
+            files = ftp.nlst(self.remote_path)
+            self.finished.emit(files)
+        except Exception as e:
+            self._logger.send_error_log(f"Failed to list files in {self.remote_path}: {str(e)}")
+
+class FTPDownloadOperationStatus:
+    EMPTY_FILE_ERROR = 8
+
+class FTPDownloadOperationObject(FTPOperationObject):
     progress = Signal(int, int)
     finished = Signal()
-    error = Signal(str)
+    error = Signal(int)
     _logger = LogManager()
 
     def __init__(self, remote_path: str, local_path: str):
         super().__init__()
         self.remote_path = remote_path
         self.local_path = local_path
-        self._logger.send_info_log(f"Initialized FTP download object for {remote_path} -> {local_path}")
+        self._logger.send_info_log(f"Initialized FTP download operation object for {remote_path} to {local_path}")
 
     def run(self):
-        self._logger.send_info_log(f"Starting download of {self.remote_path}")
-
         try:
-            with FTP() as ftp:
-                ftp.connect(
-                    host=FTPManager().ftp_config["ip"],
-                    port=FTPManager().ftp_config["port"],
-                    timeout=10
-                )
-                ftp.login(
-                    user=FTPManager().ftp_config["username"],
-                    passwd=FTPManager().ftp_config["password"]
-                )
+            status, ftp = FTPManager().connect_to_ftp()
+            if ftp is None: self.error.emit(status); return
+            ftp.sendcmd("TYPE I")
 
-                # Get file size
-                ftp.sendcmd("TYPE I")
-                file_size = ftp.size(self.remote_path)
+            file_size = ftp.size(self.remote_path)
+            if file_size == 0 or file_size is None:
+                self._logger.send_error_log(f"Empty or invalid file size for {self.remote_path}")
+                self.error.emit(FTPDownloadOperationStatus.EMPTY_FILE_ERROR)
+                return
 
-                if file_size == 0 or file_size is None:
-                    error_msg = f"Empty or invalid file size for {self.remote_path}"
-                    self._logger.send_error_log(error_msg)
-                    self.error.emit(error_msg)
-                    return
+            self._logger.send_info_log(f"Downloading file (size: {file_size} bytes)")
 
-                self._logger.send_info_log(f"Downloading file (size: {file_size} bytes)")
+            temp_path = self.local_path + '.part'
+            with open(temp_path, 'wb') as f:
+                def callback(data):
+                    f.write(data)
+                    downloaded = f.tell()
+                    self.progress.emit(downloaded, file_size)
 
-                # Download to temporary file
-                temp_path = self.local_path + '.part'
-                with open(temp_path, 'wb') as f:
-                    def callback(data):
-                        f.write(data)
-                        downloaded = f.tell()
-                        self.progress.emit(downloaded, file_size)
+                ftp.retrbinary(f'RETR {self.remote_path}', callback, blocksize=8192)
 
-                    ftp.retrbinary(f'RETR {self.remote_path}', callback, blocksize=8192)
+            if os.path.exists(self.local_path): os.remove(self.local_path)
+            os.rename(temp_path, self.local_path)
 
-                # Rename temporary file to final name
-                if os.path.exists(self.local_path):
-                    os.remove(self.local_path)
-                os.rename(temp_path, self.local_path)
-
-                self._logger.send_success_log(f"Successfully downloaded {self.remote_path}")
-                self.finished.emit()
+            self._logger.send_success_log(f"Successfully downloaded {self.remote_path}")
+            self.finished.emit()
 
         except Exception as e:
             error_msg = f"Failed to download {self.remote_path}: {str(e)}"
             self._logger.send_error_log(error_msg)
             self.error.emit(error_msg)
-
-
-class FTPDownloadThread(QThread):
-    def __init__(self, remote_path: str, local_path: str):
-        super().__init__()
-        self.worker = FTPDownloadObject(remote_path, local_path)
-        self.worker.moveToThread(self)
-        self._logger = LogManager()
-        self._logger.send_info_log(f"Created download thread for {remote_path}")
-
-    def run(self):
-        self._logger.send_info_log("Starting download thread")
-        self.worker.run()

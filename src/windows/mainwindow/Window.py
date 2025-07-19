@@ -139,13 +139,6 @@ class Ui_MainWindow(object):
 "    background-color: #333;\n"
 "    color: #999;\n"
 "}")
-        self.picFrog = QLabel(self.centralwidget)
-        self.picFrog.setObjectName(u"picFrog")
-        self.picFrog.setGeometry(QRect(360, -20, 501, 291))
-        self.picFrog.setStyleSheet(u"background: transparent; opacity: 0.5;")
-        self.picFrog.setPixmap(QPixmap(u"../assets/mrfufl4ik.png"))
-        self.picFrog.setScaledContents(True)
-        self.picFrog.setWordWrap(False)
         self.inputPlayerName = QLineEdit(self.centralwidget)
         self.inputPlayerName.setObjectName(u"inputPlayerName")
         self.inputPlayerName.setGeometry(QRect(470, 180, 411, 51))
@@ -213,16 +206,22 @@ class Ui_MainWindow(object):
 "    background-color: #333;\n"
 "    color: #999;\n"
 "}")
+        self.picServerTitle = QLabel(self.centralwidget)
+        self.picServerTitle.setObjectName(u"picServerTitle")
+        self.picServerTitle.setGeometry(QRect(480, 20, 390, 140))
+        self.picServerTitle.setStyleSheet(u"background: transparent;")
+        self.picServerTitle.setPixmap(QPixmap(u"../assets/server_title.png"))
+        self.picServerTitle.setScaledContents(True)
         MainWindow.setCentralWidget(self.centralwidget)
         self.picMain.raise_()
         self.labelChangelog.raise_()
-        self.picFrog.raise_()
         self.inputPassword.raise_()
         self.btnRules.raise_()
         self.btnRunMinecraft.raise_()
         self.btnDiscord.raise_()
         self.inputPlayerName.raise_()
         self.btnClientFolder.raise_()
+        self.picServerTitle.raise_()
 
         self.retranslateUi(MainWindow)
 
@@ -231,14 +230,17 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"FLauncher Beta", None))
+#if QT_CONFIG(statustip)
+        self.btnRunMinecraft.setStatusTip("")
+#endif // QT_CONFIG(statustip)
         self.btnRunMinecraft.setText(QCoreApplication.translate("MainWindow", u"\u0438\u0433\u0440\u0430\u0442\u044c", None))
         self.picMain.setText("")
         self.labelChangelog.setText(QCoreApplication.translate("MainWindow", u"<html><head/><body><p align=\"center\"><span style=\" font-size:14pt; font-weight:700;\">...</span></p></body></html>", None))
         self.btnRules.setText(QCoreApplication.translate("MainWindow", u"\u043f\u0440\u0430\u0432\u0438\u043b\u0430", None))
         self.btnDiscord.setText(QCoreApplication.translate("MainWindow", u"\u0434\u0438\u0441\u043a\u043e\u0440\u0434", None))
-        self.picFrog.setText("")
         self.inputPlayerName.setPlaceholderText(QCoreApplication.translate("MainWindow", u"\u043d\u0438\u043a \u0438\u0433\u0440\u043e\u043a\u0430", None))
         self.inputPassword.setPlaceholderText(QCoreApplication.translate("MainWindow", u"\u043f\u0430\u0440\u043e\u043b\u044c", None))
         self.btnClientFolder.setText(QCoreApplication.translate("MainWindow", u"\u043f\u0430\u043f\u043a\u0430", None))
+        self.picServerTitle.setText("")
     # retranslateUi
 
