@@ -3,7 +3,7 @@ import os
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QWidget
 
-from src.serverside.loading_window.Window import Ui_Form
+from src.windows.loading_window.Window import Ui_Form
 
 class FLauncherBetaServerLoadingWindow(QWidget):
     def __init__(self):

@@ -15,7 +15,7 @@ class WindowManager:
 
     def create_main_window(self) -> 'FLauncherBetaMainWindow':
         if self.has_main_window(): return self.get_main_window()
-        from src.windows.mainwindow.FLauncherBetaMainWindow import FLauncherBetaMainWindow
+        from src.windows.main_window.FLauncherBetaMainWindow import FLauncherBetaMainWindow
         self.main_window = FLauncherBetaMainWindow()
         return self.get_main_window()
     def has_main_window(self) -> bool:
@@ -25,7 +25,7 @@ class WindowManager:
 
     def create_server_loading_window(self) -> 'FLauncherBetaServerLoadingWindow':
         if self.has_server_loading_window(): return self.get_server_loading_window()
-        from src.serverside.loading_window.FLauncherBetaServerLoadingWindow import FLauncherBetaServerLoadingWindow
+        from src.windows.loading_window.FLauncherBetaServerLoadingWindow import FLauncherBetaServerLoadingWindow
         self.server_loading_window = FLauncherBetaServerLoadingWindow()
         return self.get_server_loading_window()
     def has_server_loading_window(self) -> bool:
@@ -37,7 +37,7 @@ class WindowManager:
 
     def create_download_window(self) -> 'FLauncherBetaDownloadWindow':
         if self.has_download_window(): return self.get_download_window()
-        from src.windows.downloadwindow.FLauncherBetaDownloadWindow import FLauncherBetaDownloadWindow
+        from src.windows.download_window.FLauncherBetaDownloadWindow import FLauncherBetaDownloadWindow
         self.download_window = FLauncherBetaDownloadWindow()
         return self.get_download_window()
     def distruct_download_window(self):

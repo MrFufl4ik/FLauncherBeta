@@ -1,5 +1,6 @@
 import os
 import webbrowser
+from pathlib import Path
 
 from PySide6.QtCore import QRegularExpression, Qt
 from PySide6.QtGui import QPixmap, QRegularExpressionValidator
@@ -7,10 +8,12 @@ from PySide6.QtWidgets import QMainWindow, QMessageBox
 
 from src.logs.LogManager import LogManager
 from src.operatingsystem import ConfigManager
+from src.serverside.ClientManager import ClientManager
+from src.serverside.ClientUpdateManager import ClientUpdateManager
 from src.serverside.FTPManager import FTPManager, FTPListOperationObject, FTPOperationThread
 from src.windows.WindowManager import WindowManager
-from src.windows.downloadwindow.FLauncherBetaDownloadWindow import FLauncherBetaDownloadWindow
-from src.windows.mainwindow.Window import Ui_MainWindow
+from src.windows.download_window.FLauncherBetaDownloadWindow import FLauncherBetaDownloadWindow
+from src.windows.main_window.Window import Ui_MainWindow
 from src.operatingsystem.JsonManager import writeJson, readJson
 
 class FLauncherBetaMainWindow(QMainWindow):
@@ -73,32 +76,27 @@ class FLauncherBetaMainWindow(QMainWindow):
     def _on_run_button_clicked(self):
         self.ui.btnRunMinecraft.setEnabled(False)
 
-        remote_update_path = "/modpacks/vacuumrevival"
+        remote_update_path = "/modpacks/obscurumresurgam"
 
         temp_path = f"{os.getcwd()}/temp"
         if not os.path.exists(temp_path): os.makedirs(temp_path)
 
-        remote_updates_files = []
         operation_object = FTPListOperationObject(remote_update_path)
+
         def on_list_operation_finished(remote_files_list: list):
-            for file in remote_files_list: print(file)
+            for file in ClientUpdateManager().sort_remote_update_file_list(remote_files_list):
+                remote_update_file_path: Path = Path(f"{remote_update_path}/{file}")
+
+                status: bool | None = ClientUpdateManager().check_for_update(remote_update_file_path)
+                if status is not None and status:
+                    ClientUpdateManager().download_update(remote_update_file_path)
+
+        def on_list_operation_error(error_code: int):
+            print(error_code)
+
         operation_object.finished.connect(on_list_operation_finished)
+        operation_object.error.connect(on_list_operation_error)
         self._ftp_list_operation_thread = FTPOperationThread(operation_object)
         self._ftp_list_operation_thread.start()
 
         os.removedirs(temp_path)
-
-        def on_download_finished():
-            self.ui.btnRunMinecraft.setEnabled(True)
-
-
-        window: FLauncherBetaDownloadWindow = WindowManager().create_download_window()
-        window.show()
-        operation_object = window.downloadFileSetup("/modpacks/vacuumrevival/1.7z", "file.7z")
-        operation_object.finished.connect(on_download_finished)
-        window.downloadFileStart(operation_object)
-
-        # self._operation_object = FTPListOperationObject("/")
-        # self._operation_object.finished.connect(on_list_finished)
-        # self._thread = FTPOperationThread(self._operation_object)
-        # self._thread.start()

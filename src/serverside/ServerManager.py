@@ -4,8 +4,8 @@ from PySide6.QtWidgets import QMessageBox
 from src.logs.LogManager import LogManager
 from src.serverside.FTPManager import FTPManager, ERROR_MESSAGES, FTPStatus
 from src.windows.WindowManager import WindowManager
-from src.windows.mainwindow.FLauncherBetaMainWindow import FLauncherBetaMainWindow
-from src.serverside.loading_window.FLauncherBetaServerLoadingWindow import FLauncherBetaServerLoadingWindow
+from src.windows.main_window.FLauncherBetaMainWindow import FLauncherBetaMainWindow
+from src.windows.loading_window.FLauncherBetaServerLoadingWindow import FLauncherBetaServerLoadingWindow
 
 
 class ServerManager:

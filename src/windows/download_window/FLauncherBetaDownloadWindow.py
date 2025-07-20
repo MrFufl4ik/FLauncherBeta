@@ -1,11 +1,12 @@
 from fileinput import close
+from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget
 
 from src.serverside.FTPManager import FTPDownloadOperationObject, FTPOperationThread
 from src.windows.WindowManager import WindowManager
-from src.windows.downloadwindow.Window import Ui_Form
+from src.windows.download_window.Window import Ui_Form
 
 
 class FLauncherBetaDownloadWindow(QWidget):
@@ -28,7 +29,7 @@ class FLauncherBetaDownloadWindow(QWidget):
             self.closeable = True
             self.close()
 
-    def downloadFileSetup(self, remote_path: str, local_path: str) -> FTPDownloadOperationObject | None:
+    def downloadFileSetup(self, remote_path: Path, local_path: Path) -> FTPDownloadOperationObject | None:
         if self.isDownloadActivate: return None
         operation_object = FTPDownloadOperationObject(remote_path, local_path)
         operation_object.finished.connect(self._onDownloadFinished)

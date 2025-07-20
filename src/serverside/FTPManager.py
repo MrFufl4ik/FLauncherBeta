@@ -1,6 +1,7 @@
 import os
 import socket
 from ftplib import FTP, error_perm, error_temp
+from pathlib import Path
 
 from typing import TypedDict, Optional, List
 from PySide6.QtCore import QThread, Signal, QObject
@@ -193,17 +194,17 @@ class FTPListOperationObject(FTPOperationObject):
 
     def __init__(self, remote_path: str):
         super().__init__()
-        self.remote_path = remote_path
+        self._remote_path = remote_path
         self._logger.send_info_log(f"Initialized FTP list operation object for {remote_path}")
 
     def run(self):
         status, ftp = FTPManager().connect_to_ftp()
         if ftp is None: self.error.emit(status); return
         try:
-            files = ftp.nlst(self.remote_path)
+            files = ftp.nlst(self._remote_path)
             self.finished.emit(files)
         except Exception as e:
-            self._logger.send_error_log(f"Failed to list files in {self.remote_path}: {str(e)}")
+            self._logger.send_error_log(f"Failed to list files in {self._remote_path}: {str(e)}")
 
 class FTPDownloadOperationStatus:
     EMPTY_FILE_ERROR = 8
@@ -215,10 +216,10 @@ class FTPDownloadOperationObject(FTPOperationObject):
     error = Signal(int)
     _logger = LogManager()
 
-    def __init__(self, remote_path: str, local_path: str):
+    def __init__(self, remote_path: Path, local_path: Path):
         super().__init__()
-        self.remote_path = remote_path
-        self.local_path = local_path
+        self._remote_path = str(remote_path)
+        self._local_path = str(local_path)
         self._logger.send_info_log(f"Initialized FTP download operation object for {remote_path} to {local_path}")
 
     def run(self):
@@ -227,29 +228,29 @@ class FTPDownloadOperationObject(FTPOperationObject):
             if ftp is None: self.error.emit(status); return
             ftp.sendcmd("TYPE I")
 
-            file_size = ftp.size(self.remote_path)
+            file_size = ftp.size(self._remote_path)
             if file_size == 0 or file_size is None:
-                self._logger.send_error_log(f"Empty or invalid file size for {self.remote_path}")
+                self._logger.send_error_log(f"Empty or invalid file size for {self._remote_path}")
                 self.error.emit(FTPDownloadOperationStatus.EMPTY_FILE_ERROR)
                 return
 
             self._logger.send_info_log(f"Downloading file (size: {file_size} bytes)")
 
-            temp_path = self.local_path + '.part'
+            temp_path = self._local_path + '.part'
             with open(temp_path, 'wb') as f:
                 def callback(data):
                     f.write(data)
                     downloaded = f.tell()
                     self.progress.emit(downloaded, file_size)
 
-                ftp.retrbinary(f'RETR {self.remote_path}', callback, blocksize=8192)
+                ftp.retrbinary(f'RETR {self._remote_path}', callback, blocksize=8192)
 
-            if os.path.exists(self.local_path): os.remove(self.local_path)
-            os.rename(temp_path, self.local_path)
+            if os.path.exists(self._local_path): os.remove(self._local_path)
+            os.rename(temp_path, self._local_path)
 
-            self._logger.send_success_log(f"Successfully downloaded {self.remote_path}")
+            self._logger.send_success_log(f"Successfully downloaded {self._remote_path}")
             self.finished.emit()
 
         except Exception as e:
-            self._logger.send_error_log(f"Failed to download {self.remote_path}: {str(e)}")
+            self._logger.send_error_log(f"Failed to download {self._remote_path}: {str(e)}")
             self.error.emit(FTPDownloadOperationStatus.UNKNOWN_FILE_ERROR)
