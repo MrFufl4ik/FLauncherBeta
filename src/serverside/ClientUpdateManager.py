@@ -1,7 +1,11 @@
+import os
 import re
 from pathlib import Path
 
+from qasync import asyncSlot
+
 from src.serverside.ClientManager import ClientVersion, ClientManager
+from src.serverside.FTPManager import FTPAsyncListOperationObject
 from src.windows.WindowManager import WindowManager
 from src.windows.download_window.FLauncherBetaDownloadWindow import FLauncherBetaDownloadWindow
 
@@ -23,19 +27,34 @@ class ClientUpdateManager:
                 return False
         return None
 
-    def install_update(self, local_path: Path):
-        pass
+    async def update_client(self):
 
-    def _on_download_update_finished(self):
-        WindowManager().distruct_download_window()
+        remote_update_path = "/modpacks/obscurumresurgam"
 
-    def download_update(self, remote_path: Path):
-        print("1")
-        window: FLauncherBetaDownloadWindow = WindowManager().create_download_window()
-        window.show()
-        operation_object = window.downloadFileSetup(remote_path, Path(remote_path.name))
-        operation_object.finished.connect(self._on_download_update_finished)
-        window.downloadFileStart(operation_object)
+        temp_path = f"{os.getcwd()}/temp"
+        if not os.path.exists(temp_path): os.makedirs(temp_path)
+
+        operation_object = FTPAsyncListOperationObject(Path(remote_update_path))
+
+        @asyncSlot(list)
+        async def on_list_operation_finished(remote_files_list: list):
+            for file in ClientUpdateManager().sort_remote_update_file_list(remote_files_list):
+                remote_update_file_path: Path = Path(f"{remote_update_path}/{file}")
+
+                status: bool | None = ClientUpdateManager().check_for_update(remote_update_file_path)
+                if status is not None and status:
+                    print(remote_update_file_path, status)
+                    # ClientUpdateManager().download_update(remote_update_file_path)
+
+        @asyncSlot(int)
+        async def on_list_operation_error(error_code: int):
+            print(error_code)
+
+        operation_object.finished.connect(on_list_operation_finished)
+        operation_object.error.connect(on_list_operation_error)
+        await operation_object.run()
+
+        os.removedirs(temp_path)
 
     def natural_sort_key(self, s: str):
         return [int(text) if text.isdigit() else text.lower()

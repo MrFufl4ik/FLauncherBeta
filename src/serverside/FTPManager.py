@@ -4,11 +4,13 @@ from ftplib import FTP, error_perm, error_temp
 from pathlib import Path
 
 from typing import TypedDict, Optional, List
+
+import aioftp
 from PySide6.QtCore import QThread, Signal, QObject
 
-from src.logs.LogManager import LogManager
-from src.operatingsystem import ConfigManager
-from src.operatingsystem.JsonManager import readJson
+from src.utils.LogManager import LogManager
+from src.utils import ConfigManager, ErrorHelper
+from src.utils.JsonManager import readJson
 
 # FTP Status Codes
 class FTPStatus:
@@ -138,6 +140,33 @@ class FTPManager:
             self._logger.send_error_log(f"Unknown FTP error: {str(e)}")
             return FTPStatus.UNKNOWN_ERROR, None
 
+    async def connect_to_ftp_async(self) -> tuple[int, aioftp.Client | None]:
+        try:
+            ftp = aioftp.Client()
+            await ftp.connect(
+                host=self.ftp_config["ip"],
+                port=self.ftp_config["port"]
+            )
+            await ftp.login(
+                user=self.ftp_config["username"],
+                password=self.ftp_config["password"]
+            )
+            self._logger.send_success_log(f"Connected to FTP server.")
+            return FTPStatus.SUCCESS, ftp
+        except aioftp.errors.StatusCodeError as e:
+            if "530" in str(e):  # Authentication error
+                self._logger.send_error_log(f"FTP authentication error: {str(e)}")
+                return FTPStatus.AUTH_ERROR, None
+            else:  # Server error
+                self._logger.send_error_log(f"FTP server error: {str(e)}")
+                return FTPStatus.SERVER_ERROR, None
+        except (TimeoutError, OSError) as e:
+            self._logger.send_error_log(f"Network error: {str(e)}")
+            return FTPStatus.NETWORK_ERROR, None
+        except Exception as e:
+            self._logger.send_error_log(f"Unknown FTP error: {str(e)}")
+            return FTPStatus.UNKNOWN_ERROR, None
+
     def check_connection(self) -> int:
         if not self.is_ftp_setup():
             self._logger.send_error_log("FTP is not setup properly")
@@ -188,23 +217,49 @@ class FTPIsDirectoryOperationObject(FTPOperationObject):
             self.finished.emit(False)
 
 class FTPListOperationObject(FTPOperationObject):
-    finished = Signal(list)
-    error = Signal(int)
-    _logger = LogManager()
+    finished: Signal    = Signal(list)
+    error: Signal       = Signal(int)
+    _logger: LogManager = LogManager()
 
-    def __init__(self, remote_path: str):
+    def __init__(self, remote_path: Path):
         super().__init__()
-        self._remote_path = remote_path
-        self._logger.send_info_log(f"Initialized FTP list operation object for {remote_path}")
+        self.remote_path: Path = remote_path
+        self._logger.send_info_log(f"Initialized FTP list operation object for {str(remote_path)}")
 
     def run(self):
         status, ftp = FTPManager().connect_to_ftp()
         if ftp is None: self.error.emit(status); return
         try:
-            files = ftp.nlst(self._remote_path)
+            files = ftp.nlst(str(self.remote_path))
             self.finished.emit(files)
         except Exception as e:
-            self._logger.send_error_log(f"Failed to list files in {self._remote_path}: {str(e)}")
+            self._logger.send_error_log(f"Failed to list files in {str(self.remote_path)}: {str(e)}")
+            self.error.emit(ErrorHelper.convert_string_to_int(str(e)))
+
+class FTPAsyncListOperationObject(FTPOperationObject):
+    finished: Signal    = Signal(list)
+    error: Signal       = Signal(int)
+    _logger: LogManager = LogManager()
+
+    def __init__(self, remote_path: Path):
+        super().__init__()
+        self.remote_path: Path = remote_path
+        self._logger.send_info_log(f"Initialized FTP list operation object for {str(remote_path)}")
+
+    async def run(self):
+        status, ftp = await FTPManager().connect_to_ftp_async()
+        if ftp is None: self.error.emit(status); return
+        try:
+            files = []
+            async for entry in ftp.list(str(self.remote_path)):
+                entry_full_path: str = entry[0].as_posix()
+                entry_metadata: dict[str, str | int] = entry[1]
+
+                if entry_metadata["type"] == "file": files.append(entry_full_path)
+                elif entry_metadata["type"] == "dir": files.append(entry_full_path)
+            self.finished.emit(files)
+        except Exception as e:
+            self._logger.send_error_log(f"Failed to list files in {str(self.remote_path)}: {str(e)}")
 
 class FTPDownloadOperationStatus:
     EMPTY_FILE_ERROR = 8

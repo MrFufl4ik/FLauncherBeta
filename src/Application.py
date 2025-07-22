@@ -1,9 +1,9 @@
 import asyncio
 import sys
 
-from PySide6.QtWidgets import QApplication
+from qasync import QEventLoop, QApplication
 
-from src.logs.LogManager import LogManager
+from src.utils.LogManager import LogManager
 from src.serverside.ServerManager import ServerManager
 from src.windows.WindowManager import WindowManager
 
@@ -49,12 +49,11 @@ class Application:
 
     def _run_application(self):
         LogManager().send_info_log("Starting application main loop")
-        try:
-            exit_code = self._qt_app.exec()
+        self._qt_loop = QEventLoop(self._qt_app)
+        asyncio.set_event_loop(self._qt_loop)
+        with self._qt_loop:
+            exit_code: int = self._qt_loop.run_forever()
             self.exit(exit_code)
-        except Exception as e:
-            LogManager().send_error_log(f"Critical error in main loop: {str(e)}")
-            raise
 
     def exit(self, exit_code: int):
         if exit_code == 0:

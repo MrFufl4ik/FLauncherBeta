@@ -1,7 +1,7 @@
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtWidgets import QMessageBox
 
-from src.logs.LogManager import LogManager
+from src.utils.LogManager import LogManager
 from src.serverside.FTPManager import FTPManager, ERROR_MESSAGES, FTPStatus
 from src.windows.WindowManager import WindowManager
 from src.windows.main_window.FLauncherBetaMainWindow import FLauncherBetaMainWindow

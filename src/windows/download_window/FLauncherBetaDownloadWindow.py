@@ -37,7 +37,7 @@ class FLauncherBetaDownloadWindow(QWidget):
         return operation_object
 
     def downloadFileStart(self, operation_object: FTPDownloadOperationObject):
-        if self.isDownloadActivate: return None
+        if self.isDownloadActivate: return
         self._download_operation_thread = FTPOperationThread(operation_object)
         self._download_operation_thread.start()
         self.isDownloadActivate = True

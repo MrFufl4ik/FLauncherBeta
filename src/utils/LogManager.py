@@ -1,4 +1,4 @@
-from src.logs.ColorHelper import ColorHelper, ColorCode
+from src.utils.ColorHelper import ColorHelper, ColorCode
 
 
 class LogManager:

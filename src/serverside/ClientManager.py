@@ -1,6 +1,6 @@
 import os
 
-from src.operatingsystem import JsonManager
+from src.utils import JsonManager
 
 
 class ClientVersion:
