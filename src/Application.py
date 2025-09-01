@@ -1,6 +1,10 @@
 import asyncio
 import sys
+from os import confstr_names
+from traceback import format_exception
+from types import TracebackType
 
+from PySide6.QtWidgets import QMessageBox
 from qasync import QEventLoop, QApplication
 
 from src.utils.LogManager import LogManager
@@ -8,12 +12,10 @@ from src.serverside.ServerManager import ServerManager
 from src.windows.WindowManager import WindowManager
 
 class Application:
-    """Main application class implementing Singleton pattern"""
     _instance = None
 
     def __init__(self):
-        if hasattr(self, '_initialized'):
-            return
+        if hasattr(self, '_initialized'): return
 
         self._initialized = True
         self._qt_app = None
@@ -51,13 +53,17 @@ class Application:
         LogManager().send_info_log("Starting application main loop")
         self._qt_loop = QEventLoop(self._qt_app)
         asyncio.set_event_loop(self._qt_loop)
+        sys.excepthook = self.global_error_handle
         with self._qt_loop:
             exit_code: int = self._qt_loop.run_forever()
             self.exit(exit_code)
 
+    def global_error_handle(self, exception_type: any, exception_value: any, exception_traceback: TracebackType):
+        QMessageBox.critical(None, "Error has been handle!", str(exception_type) + " | " + str(exception_value))
+        self.exit(-1)
+
     def exit(self, exit_code: int):
-        if exit_code == 0:
-            LogManager().send_info_log("Application shutdown completed successfully")
+        if exit_code == 0: LogManager().send_info_log("Application shutdown completed successfully")
         else:
             LogManager().send_warn_log(
                 f"Application exited with non-zero code: {exit_code}. "

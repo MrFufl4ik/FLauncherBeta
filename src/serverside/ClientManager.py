@@ -1,39 +1,35 @@
 import os
 
+from src.Exceptions import ClientVersionError
 from src.utils import JsonManager
 
 
 class ClientVersion:
     def __init__(self, version_str):
         if not isinstance(version_str, str):
-            raise TypeError("Version must be a string")
+            raise ClientVersionError("Version must be a string")
 
         parts = version_str.split('.')
-        if not parts:
-            raise ValueError("Version string cannot be empty")
+        if not parts: raise ClientVersionError("Version string cannot be empty")
 
         self.version = []
         for part in parts:
-            if not part.isdigit():
-                raise ValueError(f"Version part '{part}' is not a number")
+            if not part.isdigit(): raise ClientVersionError(f"Version part '{part}' is not a number")
             self.version.append(int(part))
 
         self.version = tuple(self.version)
-        self.version_str = version_str  # сохраняем исходную строку
+        self.version_str = version_str
 
     def __gt__(self, other):
-        if not isinstance(other, ClientVersion):
-            raise TypeError(f"Cannot compare Version with {type(other)}")
+        if not isinstance(other, ClientVersion): raise ClientVersionError(f"Cannot compare Version with {type(other)}")
         return self.version > other.version
 
     def __lt__(self, other):
-        if not isinstance(other, ClientVersion):
-            raise TypeError(f"Cannot compare Version with {type(other)}")
+        if not isinstance(other, ClientVersion): raise ClientVersionError(f"Cannot compare Version with {type(other)}")
         return self.version < other.version
 
     def __eq__(self, other):
-        if not isinstance(other, ClientVersion):
-            raise TypeError(f"Cannot compare Version with {type(other)}")
+        if not isinstance(other, ClientVersion): raise ClientVersionError(f"Cannot compare Version with {type(other)}")
         return self.version == other.version
 
     def __ge__(self, other):

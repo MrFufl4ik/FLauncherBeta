@@ -7,6 +7,8 @@ from PySide6.QtGui import QPixmap, QRegularExpressionValidator
 from PySide6.QtWidgets import QMainWindow
 from qasync import asyncSlot
 
+from src import Exceptions
+from src.serverside.ClientManager import ClientVersion
 from src.utils.LogManager import LogManager
 from src.utils import ConfigManager, ErrorHelper
 from src.serverside.ClientUpdateManager import ClientUpdateManager
