@@ -53,7 +53,7 @@ class Application:
         LogManager().send_info_log("Starting application main loop")
         self._qt_loop = QEventLoop(self._qt_app)
         asyncio.set_event_loop(self._qt_loop)
-        sys.excepthook = self.global_error_handle
+        #sys.excepthook = self.global_error_handle
         with self._qt_loop:
             exit_code: int = self._qt_loop.run_forever()
             self.exit(exit_code)

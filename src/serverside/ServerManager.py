@@ -49,7 +49,7 @@ class ServerManager:
 
     def ftp_initialize(self):
         self._logger.send_info_log("Start ftp check connection")
-        FTPManager().setup_ftp()
+        FTPManager().setting_up_ftp()
         self._check_connection_thread = FTPCheckConnectionThread()
         self._check_connection_thread.on_finished.connect(self.on_ftp_init_finished_handle)
         self._check_connection_thread.on_error.connect(self.on_ftp_error_handle)
@@ -79,7 +79,7 @@ class FTPCheckConnectionThread(QThread):
     def run(self):
         self._logger.send_info_log("Starting FTP connection check thread")
         ftp_manager = FTPManager()
-        result = ftp_manager.setup_ftp()
+        result = ftp_manager.setting_up_ftp()
         if result != FTPStatus.SUCCESS:
             self.on_error.emit(result)
             return

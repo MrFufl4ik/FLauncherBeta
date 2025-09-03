@@ -1,18 +1,15 @@
 import os
 import socket
+
 from ftplib import FTP, error_perm, error_temp
 from pathlib import Path
-
-from typing import TypedDict, Optional, List
-
 import aioftp
 from PySide6.QtCore import QThread, Signal, QObject
 
+from src.utils.JsonManager import read_json
 from src.utils.LogManager import LogManager
 from src.utils import ConfigManager, ErrorHelper
-from src.utils.JsonManager import readJson
 
-# FTP Status Codes
 class FTPStatus:
     SUCCESS = 0
     CONFIG_ERROR = 1
@@ -23,13 +20,7 @@ class FTPStatus:
     UNKNOWN_ERROR = 6
     SETUP_ERROR = 7
 
-# Error messages mapping
 ERROR_MESSAGES = {
-    FTPStatus.CONFIG_ERROR: (
-        "Ошибка чтения JSON.",
-        f"Файл {ConfigManager.getFTPDataJsonFile()} поврежден или не является JSON.",
-        "FTP_CONNECT_CONFIG_ERROR"
-    ),
     FTPStatus.VALIDATION_ERROR: (
         "Ошибка валидации JSON.",
         f"Данные из {ConfigManager.getFTPDataJsonFile()} имеют неправильную типизацию.",
@@ -53,11 +44,20 @@ ERROR_MESSAGES = {
 }
 
 
-class FTPConfig(TypedDict):
+class FTPConfig:
     ip: str
     port: int
     username: str
     password: str
+
+    def __init__(self, ip: str, port: int, username: str, password: str):
+        self.ip = ip
+        self.port = port
+        self.username = username
+        self.password = password
+
+    def is_valid(self):
+        return not all(key is None for key in [self.ip, self.port, self.username, self.password])
 
 
 class FTPManager:
@@ -67,63 +67,32 @@ class FTPManager:
     def __init__(self):
         if hasattr(self, '_initialized'): return
         self._initialized = True
-        self._server_loading_window = None
-        self._check_connection_thread = None
-        self.ftp_config = FTPConfig(ip="127.0.0.1", port=21, username="username", password="123")
+        self.ftp_config: FTPConfig
 
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def validate_ftp_config(self, config: dict) -> int:
-        required_keys = {"ip", "port", "username", "password"}
-        if not all(key in config for key in required_keys):
-            self._logger.send_error_log("Missing required keys in FTP config")
-            return FTPStatus.CONFIG_ERROR
+    def is_current_ftp_config_valid(self, config: FTPConfig) -> int:
+        return config is not None and config.is_valid()
 
-        if not (isinstance(config["ip"], str) and
-                isinstance(config["port"], int) and
-                isinstance(config["username"], str) and
-                isinstance(config["password"], str)):
-            self._logger.send_error_log("Type validation failed in FTP config")
-            return FTPStatus.VALIDATION_ERROR
-        return FTPStatus.SUCCESS
-
-    #FTP Setup
-    def is_ftp_setup(self) -> bool:
-        default_config = {"ip": "127.0.0.1", "port": 21, "username": "username", "password": "123"}
-        return self.ftp_config != default_config
-
-    def setup_ftp(self) -> int:
-        _json = readJson(ConfigManager.getFTPDataJsonFile())
-        if not _json:
-            self._logger.send_error_log(f"Failed to read JSON file: {ConfigManager.getFTPDataJsonFile()}")
-            return FTPStatus.CONFIG_ERROR
-        validation_result = self.validate_ftp_config(_json)
-        if validation_result != FTPStatus.SUCCESS:
-            return validation_result
-        self.ftp_config.update({
-            "ip": _json["ip"],
-            "port": _json["port"],
-            "username": _json["username"],
-            "password": _json["password"]
-        })
+    def setting_up_ftp(self) -> int:
+        json: dict = read_json(ConfigManager.getFTPDataJsonFile())
+        new_config : FTPConfig = FTPConfig(
+            json["ip"],       json["port"],
+            json["username"], json["password"]
+        )
+        if not self.is_current_ftp_config_valid(new_config): return FTPStatus.VALIDATION_ERROR
+        self.ftp_config = new_config
         self._logger.send_success_log("FTP configuration loaded successfully")
         return FTPStatus.SUCCESS
 
     def connect_to_ftp(self) -> tuple[int, FTP | None]:
         try:
             ftp = FTP()
-            ftp.connect(
-                host=self.ftp_config["ip"],
-                port=self.ftp_config["port"],
-                timeout=10
-            )
-            ftp.login(
-                user=self.ftp_config["username"],
-                passwd=self.ftp_config["password"]
-            )
+            ftp.connect(host=self.ftp_config.ip, port=self.ftp_config.port, timeout=10)
+            ftp.login(self.ftp_config.username, self.ftp_config.password)
             welcome_msg = ftp.getwelcome()
             self._logger.send_success_log(f"Connected to FTP server. Welcome message: {welcome_msg}")
             return FTPStatus.SUCCESS, ftp
@@ -143,21 +112,15 @@ class FTPManager:
     async def connect_to_ftp_async(self) -> tuple[int, aioftp.Client | None]:
         try:
             ftp = aioftp.Client()
-            await ftp.connect(
-                host=self.ftp_config["ip"],
-                port=self.ftp_config["port"]
-            )
-            await ftp.login(
-                user=self.ftp_config["username"],
-                password=self.ftp_config["password"]
-            )
+            await ftp.connect(self.ftp_config.ip, self.ftp_config.port)
+            await ftp.login(self.ftp_config.username, self.ftp_config.password)
             self._logger.send_success_log(f"Connected to FTP server.")
             return FTPStatus.SUCCESS, ftp
         except aioftp.errors.StatusCodeError as e:
-            if "530" in str(e):  # Authentication error
+            if "530" in str(e):
                 self._logger.send_error_log(f"FTP authentication error: {str(e)}")
                 return FTPStatus.AUTH_ERROR, None
-            else:  # Server error
+            else:
                 self._logger.send_error_log(f"FTP server error: {str(e)}")
                 return FTPStatus.SERVER_ERROR, None
         except (TimeoutError, OSError) as e:
@@ -168,19 +131,15 @@ class FTPManager:
             return FTPStatus.UNKNOWN_ERROR, None
 
     def check_connection(self) -> int:
-        if not self.is_ftp_setup():
+        if self.ftp_config is None or not self.ftp_config.is_valid():
             self._logger.send_error_log("FTP is not setup properly")
             return FTPStatus.SETUP_ERROR
 
         self._logger.send_info_log(
-            f"Attempting to first connect to FTP server: {self.ftp_config['ip']}:{self.ftp_config['port']}")
+            f"Attempting to first connect to FTP server: {self.ftp_config.ip}:{self.ftp_config.port}")
 
         status, ftp = self.connect_to_ftp()
         return status
-
-    def list_files(self, remote_path: str) -> Optional[List[str]]:
-        self._logger.send_info_log(f"Attempting to list files in: {remote_path}")
-
 
 class FTPOperationObject(QObject):
     def run(self): pass

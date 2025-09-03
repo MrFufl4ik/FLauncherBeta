@@ -4,7 +4,6 @@ from pathlib import Path
 
 from qasync import asyncSlot
 
-from src import Exceptions
 from src.serverside.ClientManager import ClientVersion, ClientManager
 from src.serverside.FTPManager import FTPAsyncListOperationObject
 

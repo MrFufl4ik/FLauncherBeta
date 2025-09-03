@@ -7,14 +7,13 @@ from PySide6.QtGui import QPixmap, QRegularExpressionValidator
 from PySide6.QtWidgets import QMainWindow
 from qasync import asyncSlot
 
-from src import Exceptions
-from src.serverside.ClientManager import ClientVersion
 from src.utils.LogManager import LogManager
-from src.utils import ConfigManager, ErrorHelper
+from src.utils import ConfigManager
 from src.serverside.ClientUpdateManager import ClientUpdateManager
 from src.serverside.FTPManager import FTPManager
 from src.windows.main_window.Window import Ui_MainWindow
-from src.utils.JsonManager import writeJson, readJson
+from src.utils.JsonManager import write_json, read_json
+
 
 class FLauncherBetaMainWindow(QMainWindow):
     _logger = LogManager()
@@ -45,7 +44,7 @@ class FLauncherBetaMainWindow(QMainWindow):
         self.ui.btnDiscord.clicked.connect(self._on_discord_button_clicked)
 
     def _load_player_data(self):
-        player_data = readJson(ConfigManager.getPlayerDataJsonFile()) or {}
+        player_data = read_json(ConfigManager.getPlayerDataJsonFile()) or {}
         if "name" in player_data:
             self._logger.send_info_log(f"Loaded player name from {ConfigManager.getPlayerDataJsonFile()}")
             self.ui.inputPlayerName.setText(player_data["name"])
@@ -55,20 +54,20 @@ class FLauncherBetaMainWindow(QMainWindow):
 
     def _save_player_data_player_name(self):
         self._logger.send_info_log(f"Saving player name to {ConfigManager.getPlayerDataJsonFile()}")
-        writeJson(ConfigManager.getPlayerDataJsonFile(), {"name": self.ui.inputPlayerName.text()})
+        write_json(ConfigManager.getPlayerDataJsonFile(), {"name": self.ui.inputPlayerName.text()})
 
     def _save_player_password(self):
         self._logger.send_info_log(f"Saving player password to {ConfigManager.getPlayerDataJsonFile()}")
-        writeJson(ConfigManager.getPlayerDataJsonFile(), {"password": self.ui.inputPassword.text()})
+        write_json(ConfigManager.getPlayerDataJsonFile(), {"password": self.ui.inputPassword.text()})
 
     def _on_rules_button_clicked(self):
-        links_data = readJson(ConfigManager.getLinksDataJsonFile()) or {}
+        links_data = read_json(ConfigManager.getLinksDataJsonFile()) or {}
         if "rules" in links_data:
             self._logger.send_info_log(f"Open browser with url from {ConfigManager.getLinksDataJsonFile()}")
             webbrowser.open(links_data["rules"])
 
     def _on_discord_button_clicked(self):
-        links_data = readJson(ConfigManager.getLinksDataJsonFile()) or {}
+        links_data = read_json(ConfigManager.getLinksDataJsonFile()) or {}
         if "discord" in links_data:
             self._logger.send_info_log(f"Open browser with url from {ConfigManager.getLinksDataJsonFile()}")
             webbrowser.open(links_data["discord"])

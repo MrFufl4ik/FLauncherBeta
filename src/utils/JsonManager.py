@@ -2,21 +2,14 @@ import json
 import os
 
 
-def readJson(file_path: str) -> dict | None:
+def read_json(file_path: str) -> dict:
     if os.path.exists(file_path):
-        with open(file_path, 'r') as f:
-            try: return json.load(f)
-            except: pass
-    return None
+        with open(file_path, 'r') as f: return json.load(f)
+    return {}
 
 
-def writeJson(file_path: str, json_data: dict):
+def write_json(file_path: str, json_data: dict) -> None:
     existing_config: dict = {}
-    if (readJson(file_path)): existing_config = readJson(file_path)
+    if read_json(file_path): existing_config = read_json(file_path)
     existing_config.update(json_data)
-    with open(file_path, 'w') as f:
-        try:
-            json.dump(existing_config, f, indent=4)
-            return 0
-        except: pass
-    return 1
+    with open(file_path, 'w') as f: json.dump(existing_config, f, indent=4)

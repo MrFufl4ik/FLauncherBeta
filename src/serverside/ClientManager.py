@@ -1,7 +1,7 @@
 import os
 
 from src.Exceptions import ClientVersionError
-from src.utils import JsonManager
+from src.utils.JsonManager import read_json
 
 
 class ClientVersion:
@@ -47,6 +47,7 @@ class ClientVersion:
     def __repr__(self):
         return f"Version('{self.version_str}')"
 
+
 class ClientManager:
     _instance = None
 
@@ -66,11 +67,11 @@ class ClientManager:
 
     def is_client_install(self) -> bool:
         client_path = self.create_or_get_client_absolute_path()
-        return JsonManager.readJson(f"{client_path}/client.json") is not None
+        return read_json(f"{client_path}/client.json") is not None
 
     def get_client_version(self) -> ClientVersion | None:
         client_path = self.create_or_get_client_absolute_path()
         if not self.is_client_install(): return ClientVersion("0")
-        json = JsonManager.readJson(f"{client_path}/client.json")
+        json = read_json(f"{client_path}/client.json")
         if "version" in json and json["version"] is str: return ClientVersion(json["version"])
         else: return ClientVersion("0")
