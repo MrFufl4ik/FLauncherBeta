@@ -20,7 +20,6 @@ class FLauncherBetaMainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self._thread = None
         self.ftp_manager = FTPManager()
 
         # UI setup

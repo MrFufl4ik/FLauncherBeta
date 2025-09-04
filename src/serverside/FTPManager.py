@@ -6,6 +6,7 @@ from pathlib import Path
 import aioftp
 from PySide6.QtCore import QThread, Signal, QObject
 
+from src.Exceptions import FTPAuthError, FTPServerError, FTPNetworkError, FTPUnknownError, FTPSetupError
 from src.utils.JsonManager import read_json
 from src.utils.LogManager import LogManager
 from src.utils import ConfigManager, ErrorHelper
@@ -77,7 +78,7 @@ class FTPManager:
     def is_current_ftp_config_valid(self, config: FTPConfig) -> int:
         return config is not None and config.is_valid()
 
-    def setting_up_ftp(self) -> int:
+    def setting_up_ftp_config(self):
         json: dict = read_json(ConfigManager.getFTPDataJsonFile())
         new_config : FTPConfig = FTPConfig(
             json["ip"],       json["port"],
@@ -86,61 +87,66 @@ class FTPManager:
         if not self.is_current_ftp_config_valid(new_config): return FTPStatus.VALIDATION_ERROR
         self.ftp_config = new_config
         self._logger.send_success_log("FTP configuration loaded successfully")
-        return FTPStatus.SUCCESS
 
-    def connect_to_ftp(self) -> tuple[int, FTP | None]:
+    def connect_to_ftp(self) -> FTP:
         try:
             ftp = FTP()
             ftp.connect(host=self.ftp_config.ip, port=self.ftp_config.port, timeout=10)
             ftp.login(self.ftp_config.username, self.ftp_config.password)
             welcome_msg = ftp.getwelcome()
             self._logger.send_success_log(f"Connected to FTP server. Welcome message: {welcome_msg}")
-            return FTPStatus.SUCCESS, ftp
+            return ftp
         except error_perm as e:
             self._logger.send_error_log(f"FTP authentication error: {str(e)}")
-            return FTPStatus.AUTH_ERROR, None
+            raise FTPAuthError()
         except error_temp as e:
             self._logger.send_error_log(f"FTP server error: {str(e)}")
-            return FTPStatus.SERVER_ERROR, None
+            raise FTPServerError()
         except (socket.timeout, socket.gaierror) as e:
             self._logger.send_error_log(f"Network error: {str(e)}")
-            return FTPStatus.NETWORK_ERROR, None
+            raise FTPNetworkError()
         except Exception as e:
             self._logger.send_error_log(f"Unknown FTP error: {str(e)}")
-            return FTPStatus.UNKNOWN_ERROR, None
+            raise FTPUnknownError()
 
-    async def connect_to_ftp_async(self) -> tuple[int, aioftp.Client | None]:
+    async def connect_to_ftp_async(self) -> aioftp.Client:
         try:
             ftp = aioftp.Client()
             await ftp.connect(self.ftp_config.ip, self.ftp_config.port)
             await ftp.login(self.ftp_config.username, self.ftp_config.password)
             self._logger.send_success_log(f"Connected to FTP server.")
-            return FTPStatus.SUCCESS, ftp
+            return ftp
         except aioftp.errors.StatusCodeError as e:
             if "530" in str(e):
                 self._logger.send_error_log(f"FTP authentication error: {str(e)}")
-                return FTPStatus.AUTH_ERROR, None
+                raise FTPAuthError()
             else:
                 self._logger.send_error_log(f"FTP server error: {str(e)}")
-                return FTPStatus.SERVER_ERROR, None
+                raise FTPServerError()
         except (TimeoutError, OSError) as e:
             self._logger.send_error_log(f"Network error: {str(e)}")
-            return FTPStatus.NETWORK_ERROR, None
+            raise FTPNetworkError()
         except Exception as e:
             self._logger.send_error_log(f"Unknown FTP error: {str(e)}")
-            return FTPStatus.UNKNOWN_ERROR, None
+            raise FTPUnknownError()
 
-    def check_connection(self) -> int:
+    async def check_connection_async(self) -> bool:
         if self.ftp_config is None or not self.ftp_config.is_valid():
             self._logger.send_error_log("FTP is not setup properly")
-            return FTPStatus.SETUP_ERROR
-
+            raise FTPSetupError()
         self._logger.send_info_log(
-            f"Attempting to first connect to FTP server: {self.ftp_config.ip}:{self.ftp_config.port}")
+            f"Attempting test connection to FTP server: {self.ftp_config.ip}:{self.ftp_config.port}"
+        )
 
-        status, ftp = self.connect_to_ftp()
-        return status
+        try:
+            await self.connect_to_ftp_async()
+            self._logger.send_success_log(f"FTP server working is so good! Test connection established.")
+            return True
+        except:
+            self._logger.send_error_log(f"FTP does not work properly. Test connection failed.")
+            return False
 
+#FTP Operations
 class FTPOperationObject(QObject):
     def run(self): pass
 
@@ -219,6 +225,20 @@ class FTPAsyncListOperationObject(FTPOperationObject):
             self.finished.emit(files)
         except Exception as e:
             self._logger.send_error_log(f"Failed to list files in {str(self.remote_path)}: {str(e)}")
+
+
+class FTPCheckConnectionOperationObject(FTPOperationObject):
+    on_finished = Signal(bool)
+    _logger = LogManager()
+
+    def __init__(self):
+        super().__init__()
+        self._logger.send_info_log(f"Initialized FTP check connection operation object.")
+
+    async def run(self):
+        ftp_manager = FTPManager()
+        result = await ftp_manager.check_connection()
+        self.on_finished.emit(result)
 
 class FTPDownloadOperationStatus:
     EMPTY_FILE_ERROR = 8
